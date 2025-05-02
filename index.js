@@ -192,7 +192,7 @@ app.get('/shifts', (req, res) => {
 });
 
 // 서버 시작
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`서버가 ${PORT}번 포트에서 실행 중입니다.`);
+  console.log(`Server is running on port ${PORT}`);
 });
