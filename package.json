@@ -2,26 +2,26 @@
   "name": "shift-alarm-app",
   "version": "1.0.0",
   "description": "교대근무 알리미 API",
-  "main": "index.js",  // 기본 실행 파일 경로
+  "main": "index.js",  
   "scripts": {
-    "start": "node index.js",  // Render가 실행할 때 사용하는 시작 명령어
-    "dev": "nodemon index.js"  // 로컬 개발 시 사용할 명령어
+    "start": "node index.js",  
+    "dev": "nodemon index.js"  
   },
   "dependencies": {
-    "axios": "^0.21.1",  // 요청 보내는 axios 라이브러리
-    "express": "^4.17.1",  // Express.js 기본 라이브러리
-    "dotenv": "^10.0.0",  // 환경 변수 파일을 관리하는 dotenv
-    "cors": "^2.8.5",  // CORS 설정
-    "nodemon": "^2.0.15",  // 개발 시 서버 자동 재시작
-    "apscheduler": "^3.7.0",  // 백그라운드 작업 스케줄러
-    "uuid": "^8.3.2",  // 고유 ID 생성
-    "requests": "^0.0.7"  // 웹 요청 처리
+    "axios": "^0.21.1",  
+    "express": "^4.17.1",  
+    "dotenv": "^10.0.0", 
+    "cors": "^2.8.5",  
+    "nodemon": "^2.0.15",  
+    "apscheduler": "^3.7.0",  
+    "uuid": "^8.3.2",  
+    "requests": "^0.0.7"  
   },
   "devDependencies": {
-    "nodemon": "^2.0.15"  // 개발 환경에서만 필요한 패키지
+    "nodemon": "^2.0.15"  
   },
   "engines": {
-    "node": "14.x"  // Node.js 버전 설정 (Render에서 사용할 버전)
+    "node": "14.x" 
   },
   "author": "",
   "license": "ISC"
