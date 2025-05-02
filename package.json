@@ -2,24 +2,24 @@
   "name": "shift-alarm-app",
   "version": "1.0.0",
   "description": "교대근무 알리미 API",
-  "main": "index.js",  
+  "main": "index.js",
   "scripts": {
-    "start": "node index.js",  
-    "dev": "nodemon index.js"  
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "dependencies": {
-    "axios": "^0.21.1",  
-    "express": "^4.17.1",  
-    "dotenv": "^10.0.0", 
-    "cors": "^2.8.5",  
-    "nodemon": "^2.0.15",  
-    "uuid": "^8.3.2",  
+    "axios": "^0.21.1",
+    "express": "^4.17.1",
+    "dotenv": "^10.0.0",
+    "cors": "^2.8.5",
+    "nodemon": "^2.0.15",
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "nodemon": "^2.0.15"  
+    "nodemon": "^2.0.15"
   },
   "engines": {
-    "node": "14.x" 
+    "node": "14.x"
   },
   "author": "",
   "license": "ISC"
