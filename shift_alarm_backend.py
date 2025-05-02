@@ -397,7 +397,61 @@ def handle_shift():
             'status': 'success',
             'message': '근무 정보가 수정되었습니다' if is_update else '근무가 시작되었습니다',
             'data': record,
-            'id': request_id,
+            'id': request_id,            from flask import Flask, request, jsonify
+            from flask_cors import CORS
+            import os
+            
+            app = Flask(__name__)
+            CORS(app)
+            
+            # 환경 변수에서 포트 가져오기 (Render는 PORT 환경 변수를 사용)
+            PORT = int(os.environ.get("PORT", 5000))
+            
+            # 전역 변수
+            shift_records = {}
+            
+            @app.route('/shift/<record_id>', methods=['GET', 'OPTIONS'])
+            def get_shift(record_id):
+                """특정 근무 기록 조회"""
+                if request.method == 'OPTIONS':
+                    return _build_cors_preflight_response()
+                    
+                if record_id in shift_records:
+                    return jsonify({
+                        'status': 'success',
+                        'data': shift_records[record_id]
+                    }), 200
+                else:
+                    return jsonify({
+                        'status': 'error',
+                        'message': '근무 기록을 찾을 수 없습니다.'
+                    }), 404
+            
+            @app.route('/shift', methods=['POST'])
+            def create_shift():
+                """새로운 근무 기록 생성"""
+                try:
+                    data = request.json
+                    record_id = data.get('id')
+                    if not record_id:
+                        return jsonify({'status': 'error', 'message': 'ID가 필요합니다.'}), 400
+                    
+                    shift_records[record_id] = data
+                    return jsonify({'status': 'success', 'message': '근무 기록이 생성되었습니다.'}), 201
+                except Exception as e:
+                    return jsonify({'status': 'error', 'message': f'서버 오류: {str(e)}'}), 500
+            
+            def _build_cors_preflight_response():
+                """CORS 프리플라이트 응답 생성"""
+                response = jsonify({'status': 'success'})
+                response.headers.add("Access-Control-Allow-Origin", "*")
+                response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+                response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+                return response
+            
+            if __name__ == '__main__':
+                # 디버그 모드 비활성화
+                app.run(host='0.0.0.0', port=PORT, debug=False)
             'notification_sent': notification_sent,
             'notifications_scheduled': True
         }
