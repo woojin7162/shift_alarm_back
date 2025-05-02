@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 import os
 import uuid
@@ -8,16 +8,17 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 
 app = Flask(__name__)
-CORS(app)  # 모든 도메인에서의 요청 허용
+# CORS 설정 개선 - 모든 리소스에 대해 모든 출처 허용
+CORS(app, resources={r"/*": {"origins": "*", "allow_headers": ["Content-Type", "Authorization"]}})
 
 # 간단한 메모리 DB (실제 환경에서는 실제 DB 사용 권장)
 shift_records = {}
 
-# Discord 웹훅 URL (실제 URL로 교체해야 함)
+# Discord 웹훅 URL (환경 변수에서 가져오거나 기본값 사용)
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/1367799493516329030/gnKtt12do5kMGgv4JhsWAkX05-OzhV2FteNEgWTj7E5SMy-uf1bRBaZnrg5dC0-ii7jk")
 
-# 백그라운드 스케줄러 초기화
-scheduler = BackgroundScheduler()
+# 백그라운드 스케줄러 초기화 (daemon=True로 설정하여 메인 스레드 종료 시 자동 종료)
+scheduler = BackgroundScheduler(daemon=True)
 scheduler.start()
 
 def send_discord_notification(data, message_type="start", custom_message=None):
@@ -192,8 +193,34 @@ def schedule_shift_notifications(data):
             )
             print(f"스케줄링됨: {job_id} - {notification_time.strftime('%Y-%m-%d %H:%M')}")
 
-@app.route('/shift', methods=['POST'])
+# OPTIONS 요청을 위한 사전 응답 생성
+def _build_cors_preflight_response():
+    response = make_response()
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+    response.headers.add("Access-Control-Max-Age", "3600")
+    return response
+
+# 루트 경로 엔드포인트 추가
+@app.route('/', methods=['GET', 'OPTIONS'])
+def index():
+    """루트 경로 처리"""
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+    
+    return jsonify({
+        'status': 'success',
+        'message': '교대근무 알리미 API가 실행 중입니다.',
+        'endpoints': ['/shift', '/shift/<record_id>', '/shifts']
+    })
+
+@app.route('/shift', methods=['POST', 'OPTIONS'])
 def handle_shift():
+    # OPTIONS 요청 처리
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+        
     try:
         # 요청 데이터 가져오기
         data = request.json
@@ -276,9 +303,12 @@ def handle_shift():
             'message': f'서버 오류: {str(e)}'
         }), 500
 
-@app.route('/shift/<record_id>', methods=['GET'])
+@app.route('/shift/<record_id>', methods=['GET', 'OPTIONS'])
 def get_shift(record_id):
     """특정 근무 기록 조회"""
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+        
     if record_id in shift_records:
         return jsonify({
             'status': 'success',
@@ -290,9 +320,12 @@ def get_shift(record_id):
             'message': '해당 ID의 근무 기록을 찾을 수 없습니다'
         }), 404
 
-@app.route('/shifts', methods=['GET'])
+@app.route('/shifts', methods=['GET', 'OPTIONS'])
 def get_all_shifts():
     """모든 근무 기록 조회"""
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+        
     return jsonify({
         'status': 'success',
         'data': list(shift_records.values())
@@ -306,10 +339,9 @@ def init_scheduler():
 
 @app.teardown_appcontext
 def shutdown_scheduler(exception=None):
-    if scheduler.running:
-        scheduler.shutdown()
+    pass  # 종료 시 스케줄러 셧다운을 비활성화 (daemon=True로 설정했기 때문)
 
 # Railway와 같은 클라우드 서비스 배포를 위한 포트 설정
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=False)
