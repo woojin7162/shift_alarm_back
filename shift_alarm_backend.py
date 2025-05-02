@@ -14,7 +14,7 @@ CORS(app)  # 모든 도메인에서의 요청 허용
 shift_records = {}
 
 # Discord 웹훅 URL (실제 URL로 교체해야 함)
-DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1367799493516329030/gnKtt12do5kMGgv4JhsWAkX05-OzhV2FteNEgWTj7E5SMy-uf1bRBaZnrg5dC0-ii7jk"  # ⚠️ 실제 웹훅 URL로 교체하세요
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/1367799493516329030/gnKtt12do5kMGgv4JhsWAkX05-OzhV2FteNEgWTj7E5SMy-uf1bRBaZnrg5dC0-ii7jk")
 
 # 백그라운드 스케줄러 초기화
 scheduler = BackgroundScheduler()
