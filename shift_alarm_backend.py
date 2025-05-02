@@ -6,6 +6,114 @@ import requests
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
+from threading import Lock
+
+app = Flask(__name__)
+# CORS 설정 개선 - 특정 출처만 허용
+CORS(app, resources={r"/*": {"origins": ["https://your-allowed-origin.com"], "allow_headers": ["Content-Type", "Authorization"]}})
+
+# 스레드 안전성을 위한 Lock 추가
+shift_records = {}
+shift_records_lock = Lock()
+
+# Discord 웹훅 URL (환경 변수에서만 가져오도록 수정)
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
+if not DISCORD_WEBHOOK_URL:
+    raise EnvironmentError("DISCORD_WEBHOOK_URL 환경 변수가 설정되지 않았습니다.")
+
+# 백그라운드 스케줄러 초기화
+scheduler = BackgroundScheduler(daemon=False)  # daemon=False로 설정하여 안전한 종료 처리
+scheduler.start()
+
+def send_discord_notification(data, message_type="start", custom_message=None):
+    """Discord 웹훅으로 알림 보내기"""
+    shift_type = data.get('shiftType', 'N/A')
+    shift_order = data.get('shiftOrder', 'N/A')
+    shift_time_range = data.get('shiftTimeRange', 'N/A')
+    task_type = data.get('taskType', 'N/A')
+    
+    # 기본 임베드 컬러 설정
+    embed_color = 0x3498db  # 파란색 (기본)
+    
+    if message_type == "start":
+        title = "🔄 교대 시작 알림"
+        description = f"순번 {shift_order}의 교대가 곧 시작됩니다."
+        embed_color = 0x2ecc71  # 초록색
+    elif message_type == "end":
+        title = "⏹️ 교대 종료 알림"
+        description = f"순번 {shift_order}의 교대가 종료되었습니다."
+        embed_color = 0xe74c3c  # 빨간색
+    else:
+        title = "📢 알림"
+        description = custom_message or "새로운 알림이 도착했습니다."
+
+    payload = {
+        "embeds": [
+            {
+                "title": title,
+                "description": description,
+                "color": embed_color,
+                "fields": [
+                    {"name": "교대 유형", "value": shift_type, "inline": True},
+                    {"name": "작업 유형", "value": task_type, "inline": True},
+                    {"name": "시간 범위", "value": shift_time_range, "inline": False},
+                ],
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        ]
+    }
+
+    try:
+        response = requests.post(DISCORD_WEBHOOK_URL, json=payload)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"Discord 알림 전송 실패: {e}")
+
+@app.route('/add_shift', methods=['POST'])
+def add_shift():
+    """새로운 교대 일정 추가"""
+    data = request.json
+    shift_id = str(uuid.uuid4())
+    with shift_records_lock:  # 동시성 문제 방지
+        shift_records[shift_id] = data
+
+    # 스케줄러에 작업 추가
+    shift_time = datetime.strptime(data['shiftTime'], "%Y-%m-%d %H:%M:%S")
+    scheduler.add_job(
+        send_discord_notification,
+        trigger=DateTrigger(run_date=shift_time),
+        args=[data],
+        kwargs={"message_type": "start"},
+        id=shift_id
+    )
+    return jsonify({"message": "교대 일정이 추가되었습니다.", "shift_id": shift_id})
+
+@app.route('/delete_shift/<shift_id>', methods=['DELETE'])
+def delete_shift(shift_id):
+    """교대 일정 삭제"""
+    with shift_records_lock:
+        if shift_id in shift_records:
+            del shift_records[shift_id]
+            scheduler.remove_job(shift_id)
+            return jsonify({"message": "교대 일정이 삭제되었습니다."})
+        else:
+            return make_response(jsonify({"error": "해당 ID의 교대 일정이 없습니다."}), 404)
+
+# 애플리케이션 종료 시 스케줄러 안전 종료
+@app.before_first_request
+def setup():
+    import atexit
+    atexit.register(lambda: scheduler.shutdown(wait=False))
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)from flask import Flask, request, jsonify, make_response
+from flask_cors import CORS
+import os
+import uuid
+import requests
+from datetime import datetime, timedelta
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.date import DateTrigger
 
 app = Flask(__name__)
 # CORS 설정 개선 - 모든 리소스에 대해 모든 출처 허용
